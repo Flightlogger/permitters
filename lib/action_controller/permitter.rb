@@ -57,13 +57,32 @@ module ActionController
     def permitted_params
       scopes = {}
       unscoped_attributes = []
+      record_relations = resource_name.to_s.classify.constantize.reflections
 
       permitted_attributes.each do |attribute|
         scope_name = attribute.options[:scope]
-        (scope_name ? (scopes[scope_name] ||= []) : unscoped_attributes) << attribute.name
+        if scope_name.present?
+          scopes[scope_name] ||= []
+          scopes[scope_name] << attribute.name
+        elsif record_relations[attribute.name.to_sym].present?
+          permitter_name = "#{record_relations[attribute.name.to_sym].class_name}Permitter"
+          begin
+            binding.pry
+            nested_params = Parameters.new(attribute.name.to_sym => params[resource_name]["#{attribute.name}_attributes"])
+            binding.pry
+            attributes = permitter_name.constantize.new(nested_params, user, authorizer).permitted_params
+            binding.pry
+            scope_name = "#{attribute.name}_attributes"
+            scopes[scope_name] = attributes
+          rescue NameError
+          end
+        else
+          (scope_name ? (scopes[scope_name] ||= []) : unscoped_attributes) << attribute.name
+        end
       end
 
       # class_attribute creates an instance method called resource_name, which we'll allow overriding of in the permitter definition, if desired for some odd reason.
+      binding.pry
       @filtered_params ||= params.require(resource_name).permit(*unscoped_attributes, scopes)
 
       permitted_attributes.select {|a| a.options[:authorize]}.each do |attribute|
@@ -84,6 +103,7 @@ module ActionController
         @filtered_params.reject!{|param| param == attribute } if cannot?(attribute.options[:if_can?].to_sym, resource_name)
       end
 
+      binding.pry
       @filtered_params
     end
 
