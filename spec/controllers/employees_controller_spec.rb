@@ -24,6 +24,24 @@ shared_examples_for 'valid employee controllers' do |options|
         expect(response).to be_success, "create failed (got #{response.status}): #{response.body}"
       end
 
+      it 'does accept cancan whitelisted params', if: options[:auth] do
+        ::EmployeesController.test_role = 'leader'
+        ::Employee.delete_all
+        name = ::SecureRandom.urlsafe_base64
+
+        put :create, {employee: {c: name}}
+        expect(response).to be_success, "create failed (got #{response.status}): #{response.body}"
+      end
+
+      it 'does accept cancan whitelisted params', if: options[:auth] do
+        ::EmployeesController.test_role = 'leader'
+        ::Employee.delete_all
+        name = ::SecureRandom.urlsafe_base64
+
+        expect { put :create, {employee: {b: name}} }.to raise_error(unpermitted),
+               'permitters should not allow put'
+      end
+
       it 'does not accept non-whitelisted params' do
         ::EmployeesController.test_role = 'admin'
         ::Employee.delete_all
