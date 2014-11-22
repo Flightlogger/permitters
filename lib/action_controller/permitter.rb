@@ -1,7 +1,7 @@
 module ActionController
   class PermitterAttribute < Struct.new(:name, :options); end
   class PermitterError < StandardError #:nodoc:
-  end 
+  end
   class Permitter
 
     # Application-wide configuration
@@ -80,12 +80,24 @@ module ActionController
         end
       end
 
+      permitted_attributes.select {|a| a.options[:if_can?]}.each do |attribute|
+        @filtered_params.reject!{|param| param == attribute } if cannot?(attribute.options[:if_can?].to_sym, resource_name)
+      end
+
       @filtered_params
     end
 
     def authorize!(*args, &block)
       # implementing here is clearer than doing a delegate :authorize!, :to => :authorizer, imo.
       authorizer ? authorizer.__send__(:authorize!, *args, &block) : nil
+    end
+
+    def can?(*args)
+      authorizer ? authorizer.__send__(:can?, *args) : false
+    end
+
+    def cannot?(*args)
+      !can?(*args)
     end
 
     def resource_name
