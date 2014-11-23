@@ -1,8 +1,8 @@
 require 'rails'
 require 'spec_helper'
 
-shared_examples_for 'valid employee controllers' do
-  # turn on error raising for unpermitted parameters for 
+shared_examples_for 'valid employee controllers' do |options|
+  # turn on error raising for unpermitted parameters for
   # easier testing
   before(:all) do
     ActionController::Parameters.action_on_unpermitted_parameters = :raise
@@ -28,12 +28,12 @@ shared_examples_for 'valid employee controllers' do
         ::EmployeesController.test_role = 'admin'
         ::Employee.delete_all
         name = ::SecureRandom.urlsafe_base64
-        
+
         expect { put :create, {employee: {b: name}} }.to raise_error(unpermitted),
                'permitters should not allow put'
       end
 
-      it 'does not accept whitelisted params when cancan disallows user', if: @auth_configured do
+      it 'does not accept whitelisted params when cancan disallows user', if: options[:auth] do
         ::EmployeesController.test_role = 'nobody'
         ::Employee.delete_all
         name = ::SecureRandom.urlsafe_base64
@@ -62,7 +62,7 @@ shared_examples_for 'valid employee controllers' do
                'permitters should not allow put'
       end
 
-      it 'does not accept whitelisted params when cancan disallows user', if: @auth_configured do
+      it 'does not accept whitelisted params when cancan disallows user', if: options[:auth] do
         ::Admin::EmployeesController.test_role = 'nobody'
         ::Employee.delete_all
         name = ::SecureRandom.urlsafe_base64
@@ -90,7 +90,7 @@ shared_examples_for 'valid employee controllers' do
                'permitters should not allow put'
       end
 
-      it 'does not accept whitelisted params when cancan disallows user', if: @auth_configured do
+      it 'does not accept whitelisted params when cancan disallows user', if: options[:auth] do
         ::Admin::HumanResources::EmployeesController.test_role = 'nobody'
         ::Employee.delete_all
         name = ::SecureRandom.urlsafe_base64
@@ -109,7 +109,6 @@ describe 'With Ability class configured' do
     @old_current_authorizer_method = ActionController::Permitter.current_authorizer_method
     ActionController::Permitter.authorizer = 'Ability'
     ActionController::Permitter.current_authorizer_method = nil
-    @no_auth_configured = false
   end
 
   after(:each) do
@@ -117,7 +116,7 @@ describe 'With Ability class configured' do
     ActionController::Permitter.current_authorizer_method = @old_current_authorizer_method
   end
 
-  it_should_behave_like 'valid employee controllers'
+  it_should_behave_like 'valid employee controllers', { auth: false }
 end
 
 describe 'With current_ability method configured' do
@@ -126,7 +125,6 @@ describe 'With current_ability method configured' do
     @old_current_authorizer_method = ActionController::Permitter.current_authorizer_method
     ActionController::Permitter.authorizer = 'Ability'
     ActionController::Permitter.current_authorizer_method = nil
-    @auth_configured = true
   end
 
   after(:each) do
@@ -134,7 +132,7 @@ describe 'With current_ability method configured' do
     ActionController::Permitter.current_authorizer_method = @old_current_authorizer_method
   end
 
-  it_should_behave_like 'valid employee controllers'
+  it_should_behave_like 'valid employee controllers', { auth: true }
 end
 
 describe 'With Ability class and current_ability method configured' do
@@ -143,7 +141,6 @@ describe 'With Ability class and current_ability method configured' do
     @old_current_authorizer_method = ActionController::Permitter.current_authorizer_method
     ActionController::Permitter.authorizer = 'Ability'
     ActionController::Permitter.current_authorizer_method = nil
-    @auth_configured = true
   end
 
   after(:each) do
@@ -151,7 +148,7 @@ describe 'With Ability class and current_ability method configured' do
     ActionController::Permitter.current_authorizer_method = @old_current_authorizer_method
   end
 
-  it_should_behave_like 'valid employee controllers'
+  it_should_behave_like 'valid employee controllers', { auth: true }
 end
 
 describe 'With no auth configured' do
@@ -160,16 +157,14 @@ describe 'With no auth configured' do
     @old_current_authorizer_method = ActionController::Permitter.current_authorizer_method
     ActionController::Permitter.authorizer = 'Ability'
     ActionController::Permitter.current_authorizer_method = nil
-    @auth_configured = false
   end
 
   after(:each) do
     ActionController::Permitter.authorizer = @old_authorizer
     ActionController::Permitter.current_authorizer_method = @old_current_authorizer_method
-    @auth_configured = true
   end
 
-  it_should_behave_like 'valid employee controllers'
+  it_should_behave_like 'valid employee controllers', { auth: false }
 end
 
 describe 'Without a current_user method' do
@@ -188,5 +183,5 @@ describe 'Without a current_user method' do
     end
   end
 
-  it_should_behave_like 'valid employee controllers'
+  it_should_behave_like 'valid employee controllers', { auth: false }
 end
